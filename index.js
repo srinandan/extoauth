@@ -3,7 +3,7 @@
  *
  */
 
-var debug = require('debug')('plugin:azurejwt');
+var debug = require('debug')('plugin:extoauth');
 var request = require('request');
 var rs = require('jsrsasign');
 var JWS = rs.jws.JWS;
@@ -18,7 +18,7 @@ module.exports.init = function (config, logger, stats) {
 
   var publickeys = {};
   var publickey_url = config.publickey_url;
-  var client_id = config.client_id;
+  var client_id = config.client_id || 'client_id';
   var iss = config.iss;
   var exp = config.exp;
   //set keyType to pem if the endpoint returns a single pem file
@@ -50,8 +50,7 @@ module.exports.init = function (config, logger, stats) {
   );
 
   function getJWK(kid) {
-    if (publickeys.constructor == Array) {
-      if (!publickeys.keys) return "";
+    if (publickeys.keys && publickeys.keys.constructor == Array) {
       for (var i = 0; i < publickeys.keys.length; i ++) {
         if (publickeys.keys[i].kid == kid) {
           return publickeys.keys[i];
@@ -59,6 +58,8 @@ module.exports.init = function (config, logger, stats) {
       }
       debug ("no public key that matches kid found");
       return "";      
+    } else if (publickeys[kid]) {//handle cases like https://www.googleapis.com/oauth2/v1/certs
+      return publickeys[kid];
     } else { //if the publickeys url does not return arrays, then use the only public key
       debug("returning default public key");
       return publickeys;
@@ -94,7 +95,7 @@ module.exports.init = function (config, logger, stats) {
 			var kid = jwtdecode.headerObj.kid;  
 			if (keyType != 'jwk') {
 				debug("key type is PEM");
-				isValid = validateJWK(publickeys, jwtpayload[1], exp);
+				isValid = validateJWT(publickeys, jwtpayload[1], exp);
                 if(isValid) {
                   delete (req.headers['authorization']);//removing the auth header
                   req.headers['x-api-key'] = jwtdecode.payloadObj[client_id];                
