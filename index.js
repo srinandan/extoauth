@@ -87,6 +87,8 @@ module.exports.init = function(config, logger, stats) {
 
                 if (!jwtpayload || jwtpayload.length < 2) {
                     debug("ERROR - JWT Token Missing in Auth header");
+                    delete(req.headers['authorization']);
+                    delete(req.headers['x-api-key']);
                 } else {
                     var jwtdecode = JWS.parse(jwtpayload[1]);
                     if (jwtdecode.headerObj) {
@@ -99,13 +101,19 @@ module.exports.init = function(config, logger, stats) {
                                 req.headers['x-api-key'] = jwtdecode.payloadObj[client_id];
                             } else {
                                 debug("ERROR - JWT is invalid");
+                                delete(req.headers['authorization']);
+                                delete(req.headers['x-api-key']);
                             }
                         } else if (!kid && keyType == 'jwk') {
                             debug("ERROR - JWT Missing kid in header");
+                            delete(req.headers['authorization']);
+                            delete(req.headers['x-api-key']);
                         } else {
                             var jwk = getJWK(kid);
                             if (!jwk) {
                                 debug("ERROR - Could not find public key to match kid");
+                                delete(req.headers['authorization']);
+                                delete(req.headers['x-api-key']);
                             } else {
                                 var publickey = rs.KEYUTIL.getKey(jwk);
                                 var pem = rs.KEYUTIL.getPEM(publickey);
@@ -122,10 +130,14 @@ module.exports.init = function(config, logger, stats) {
                         }
                     } else {
                         debug("ERROR - Missing header in JWT");
+                        delete(req.headers['authorization']);
+                        delete(req.headers['x-api-key']);
                     }
                 }
             } catch (err) {
                 debug("ERROR - " + err);
+                delete(req.headers['authorization']);
+                delete(req.headers['x-api-key']);
             }
             next();
         }
